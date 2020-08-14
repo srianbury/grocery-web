@@ -1,11 +1,13 @@
 import React from "react";
-import Authentication from "../Authentication";
 import App from "../App";
+import Authentication from "../Authentication";
 
 const Root = () => (
-  <Authentication>
-    <App />
-  </Authentication>
+  <div className="mt-2">
+    <Authentication>
+      <App />
+    </Authentication>
+  </div>
 );
 
 export default Root;

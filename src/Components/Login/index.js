@@ -1,157 +1,290 @@
 import React, { useState, useContext } from "react";
+import { useFormik } from "formik";
+import * as yup from "yup";
 import { AuthenticationContext } from "../Authentication";
+import Spinner from "../Spinner";
+import Error from "../Error";
 
 const LoginBase = () => {
-  const [alreadyAMember, setAlreadyAMember] = useState(true);
+  const [alreadyAUser, setAlreadyAUser] = useState(true);
   function handleToggle() {
-    setAlreadyAMember(prev => !prev);
-  }
-  if (alreadyAMember) {
-    return <Login handleToggle={handleToggle} />;
-  }
-  return <SignUp handleToggle={handleToggle} />;
-};
-
-const Login = ({ handleToggle }) => {
-  const { setUser } = useContext(AuthenticationContext);
-  const [form, setForm] = useState({
-    username: "",
-    password: ""
-  });
-  function handleInputChange(e) {
-    const key = e.target.name;
-    const value = e.target.value;
-    setForm(prev => ({
-      ...prev,
-      [key]: value
-    }));
-  }
-  async function handleLogin() {
-    const response = await fetch(`${process.env.REACT_APP_API_URL}/login`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(form)
-    });
-    const result = await response.json();
-    setUser(result);
+    setAlreadyAUser(prev => !prev);
   }
   return (
     <div>
-      <h1>Login</h1>
-      <div>
-        Username
-        <input
-          name="username"
-          type="text"
-          value={form.username}
-          onChange={handleInputChange}
-        />
-        Password
-        <input
-          name="password"
-          type="password"
-          value={form.password}
-          onChange={handleInputChange}
-        />
-        <button onClick={handleLogin}>Login</button>
-      </div>
-      <div>
-        Don't have an account? <button onClick={handleToggle}>Sign Up</button>
-      </div>
+      {alreadyAUser ? (
+        <LoginContainer handleToggle={handleToggle} />
+      ) : (
+        <SignUpContainer handleToggle={handleToggle} />
+      )}
     </div>
   );
 };
 
-const SignUp = ({ handleToggle }) => {
+const SignUpContainer = ({ handleToggle }) => {
   const { setUser } = useContext(AuthenticationContext);
-  const [form, setForm] = useState({
-    username: "",
-    email: "",
-    password: "",
-    verifyPassword: "",
-    error: null
-  });
-  function handleInputChange(e) {
-    const key = e.target.name;
-    const value = e.target.value;
-    setForm(prev => ({
-      ...prev,
-      [key]: value
-    }));
-  }
-  async function handleSignUp() {
-    if (form.password !== form.verifyPassword) {
-      setForm(prev => ({
-        ...prev,
-        error: "Passwords do not match."
-      }));
-      return;
-    }
 
-    if (form.username.trim() === "") {
-      setForm(prev => ({
-        ...prev,
-        error: "Username cannot be blank."
-      }));
-      return;
-    }
-
-    const response = await fetch(`${process.env.REACT_APP_API_URL}/signup`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        username: form.username,
-        password: form.password,
-        email: form.username
+  const SignupSchema = yup.object().shape({
+    username: yup
+      .string()
+      .min(2, "Username must be at least 2 characters")
+      .max(21, "Username must be less than 21 characters")
+      .required("Required"),
+    email: yup
+      .string()
+      .email("Invalid email")
+      .required("Required"),
+    password: yup
+      .string()
+      .min(10, "Password must be at least 10 characters")
+      .max(30, "Password must be less than 30 characters")
+      .required("Required"),
+    verifyPassword: yup
+      .mixed()
+      .test("match", "Passwords do not match.", function() {
+        return this.parent.password === this.parent.verifyPassword;
       })
-    });
-    const result = await response.json();
-    setUser(result);
+  });
+
+  async function handleSignUp(values, { setStatus, setSubmitting }) {
+    try {
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/signup`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          username: values.username,
+          password: values.password,
+          email: values.email
+        })
+      });
+      const result = await response.json();
+      if (response.status === 200) {
+        setUser(result);
+      }
+
+      if (response.status === 400) {
+        setStatus({
+          message: result.message
+        });
+      }
+    } catch (e) {
+      setStatus({
+        message: "Sign up failed." // TODO: add more specific reason here
+      });
+      setSubmitting(false);
+    }
   }
+
+  const formik = useFormik({
+    initialValues: {
+      username: "",
+      password: "",
+      email: "",
+      verifyPassword: ""
+    },
+    validationSchema: SignupSchema,
+    onSubmit: handleSignUp
+  });
+
   return (
-    <div>
+    <SignUpView
+      formik={formik}
+      handleSignUp={handleSignUp}
+      handleToggle={handleToggle}
+    />
+  );
+};
+
+const SignUpView = ({ formik, handleToggle }) => (
+  <div className="d-flex justify-content-center">
+    <form onSubmit={formik.handleSubmit}>
       <h1>Sign Up</h1>
-      <div>{form.error}</div>
-      <div>
-        Username
+
+      {formik.status && <Error message={formik.status.message} />}
+
+      <div className="form-group">
+        <label htmlFor="username">Username</label>
         <input
           name="username"
           type="text"
-          value={form.username}
-          onChange={handleInputChange}
+          placeholder="Username"
+          className="form-control"
+          value={formik.values.username}
+          onChange={formik.handleChange}
+          onBlur={formik.handleBlur}
         />
-        Email
+        {formik.touched.username && formik.errors.username && (
+          <Error message={formik.errors.username} />
+        )}
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="email">Email</label>
         <input
           name="email"
           type="text"
-          value={form.email}
-          onChange={handleInputChange}
+          placeholder="Email"
+          className="form-control"
+          value={formik.values.email}
+          onChange={formik.handleChange}
+          onBlur={formik.handleBlur}
         />
-        Password
+        {formik.touched.email && formik.errors.email && (
+          <Error message={formik.errors.email} />
+        )}
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="username">Password</label>
         <input
           name="password"
           type="password"
-          value={form.password}
-          onChange={handleInputChange}
+          placeholder="Password"
+          className="form-control"
+          value={formik.values.password}
+          onChange={formik.handleChange}
+          onBlur={formik.handleBlur}
         />
-        Verify Password
+        {formik.touched.password && formik.errors.password && (
+          <Error message={formik.errors.password} />
+        )}
+      </div>
+
+      <div className="form-group">
+        <label htmlFor="verifyPassword">Verify Password</label>
         <input
           name="verifyPassword"
           type="password"
-          value={form.verifyPassword}
-          onChange={handleInputChange}
+          placeholder="Verify Password"
+          className="form-control"
+          value={formik.values.verifyPassword}
+          onChange={formik.handleChange}
+          onBlur={formik.handleBlur}
         />
-        <button onClick={handleSignUp}>Sign Up</button>
+        {formik.touched.verifyPassword && formik.errors.verifyPassword && (
+          <Error message={formik.errors.verifyPassword} />
+        )}
       </div>
+
+      <button
+        type="submit"
+        className="btn btn-primary"
+        disabled={formik.isSubmitting}
+      >
+        {formik.isSubmitting ? <Spinner /> : "Sign Up"}
+      </button>
+
       <div>
-        Already an account? <button onClick={handleToggle}>Login</button>
+        Already a user?{" "}
+        <button type="button" className="btn btn-link" onClick={handleToggle}>
+          Sign up
+        </button>
       </div>
-    </div>
-  );
+    </form>
+  </div>
+);
+
+const LoginContainer = ({ handleToggle }) => {
+  const { setUser } = useContext(AuthenticationContext);
+
+  const LoginSchema = yup.object().shape({
+    username: yup.string().required("Required"),
+    password: yup.string().required("Required")
+  });
+
+  async function handleLogin(values, { setStatus, setSubmitting }) {
+    try {
+      setStatus(null); // reset status before request
+      const response = await fetch(`${process.env.REACT_APP_API_URL}/login`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(values)
+      });
+
+      const result = await response.json();
+      if (response.status === 200) {
+        setUser(result);
+      }
+
+      if (response.status === 400) {
+        setStatus({
+          message: result.message
+        });
+      }
+    } catch (e) {
+      setStatus({
+        message: "Login failed." // TODO: add more specific reason here
+      });
+      setSubmitting(false);
+    }
+  }
+
+  const formik = useFormik({
+    initialValues: {
+      username: "",
+      password: ""
+    },
+    validationSchema: LoginSchema,
+    onSubmit: handleLogin
+  });
+
+  return <LoginView formik={formik} handleToggle={handleToggle} />;
 };
+
+const LoginView = ({ formik, handleToggle }) => (
+  <div className="d-flex justify-content-center">
+    <form onSubmit={formik.handleSubmit}>
+      <h1>Login</h1>
+      {formik.status && <Error message={formik.status.message} />}
+      <div className="form-group">
+        <label htmlFor="username">Username</label>
+        <input
+          name="username"
+          type="text"
+          placeholder="Username"
+          className="form-control"
+          value={formik.values.username}
+          onChange={formik.handleChange}
+          onBlur={formik.handleBlur}
+        />
+        {formik.touched.username && formik.errors.username && (
+          <Error message={formik.errors.username} />
+        )}
+      </div>
+      <div className="form-group">
+        <label htmlFor="password">Password</label>
+        <input
+          name="password"
+          type="password"
+          placeholder="Password"
+          className="form-control"
+          value={formik.values.password}
+          onChange={formik.handleChange}
+          onBlur={formik.handleBlur}
+        />
+        {formik.touched.password && formik.errors.password && (
+          <Error message={formik.errors.password} />
+        )}
+      </div>
+      <button
+        type="submit"
+        className="btn btn-primary"
+        disabled={formik.isSubmitting}
+      >
+        {formik.isSubmitting ? <Spinner /> : "Login"}
+      </button>
+      <div>
+        Don't have an account?{" "}
+        <button type="button" className="btn btn-link" onClick={handleToggle}>
+          Sign up
+        </button>
+      </div>
+    </form>
+  </div>
+);
 
 export default LoginBase;
