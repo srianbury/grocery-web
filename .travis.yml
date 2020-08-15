@@ -1,0 +1,18 @@
+language: node_js
+node_js:
+  - "stable"
+cache:
+  directories:
+  - node_modules
+script:
+  - npm run build
+env:
+  REACT_APP_API_URL: $REACT_APP_API_URL
+deploy:
+  provider: pages
+  skip_cleanup: true
+  github_token: $GITHUB_TOKEN
+  edge: true
+  local_dir: build
+  on:
+    branch: master
