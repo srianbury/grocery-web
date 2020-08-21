@@ -51,7 +51,11 @@ const Authentication = ({ children }) => {
   }
 
   if (state.loading) {
-    return <Spinner />;
+    return (
+      <div className="d-flex justify-content-center mt-4">
+        <Spinner />
+      </div>
+    );
   }
 
   return (

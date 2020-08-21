@@ -4,7 +4,11 @@ import Spinner from "../Spinner";
 import Error from "../Error";
 
 const AppContainer = ({ children }) => (
-  <div className="d-flex justify-content-center">{children}</div>
+  <div className="container">
+    <div className="row">
+      <div className="col-lg-10 offset-lg-1">{children}</div>
+    </div>
+  </div>
 );
 
 const App = () => {
@@ -119,21 +123,27 @@ const App = () => {
   }
 
   if (state.loading) {
-    return <Spinner />;
+    return (
+      <div className="d-flex justify-content-center">
+        <Spinner />
+      </div>
+    );
   }
 
   return (
     <div>
-      <span>
-        <h3 className="d-inline-block mr-2">Grocery List</h3>
-        <button
-          type="button"
-          className="btn btn-sm btn-primary"
-          onClick={handleRetry}
-        >
-          Refresh
-        </button>
-      </span>
+      <h3>
+        <span className="align-middle">Grocery List</span>
+        <span className="ml-2">
+          <button
+            type="button"
+            className="btn btn-sm btn-primary"
+            onClick={handleRetry}
+          >
+            <i className="fas fa-sync" />
+          </button>
+        </span>
+      </h3>
       <ListView
         list={state.list}
         handleRemoveItem={handleRemoveItem}
@@ -163,13 +173,13 @@ const ListView = ({ list, handleRemoveItem, handleRemoveAll }) => (
 );
 
 const ClearList = ({ handleRemoveAll }) => (
-  <div className="d-flex justify-content-end mt-3">
+  <div className="d-flex justify-content-end mt-2">
     <button
       type="button"
       className="btn btn-sm btn-danger"
       onClick={handleRemoveAll}
     >
-      Clear List
+      Clear All
     </button>
   </div>
 );
@@ -194,13 +204,15 @@ const ListItemView = ({ id, name, handleRemoveItem }) => (
   <li className="list-group-item">
     <div className="d-flex justify-content-between">
       <div>{name}</div>
-      <button
-        type="button"
-        className="btn btn-sm btn-danger"
-        onClick={() => handleRemoveItem(id)}
-      >
-        Delete
-      </button>
+      <div className="d-flex align-items-center">
+        <button
+          type="button"
+          className="btn btn-sm btn-danger"
+          onClick={() => handleRemoveItem(id)}
+        >
+          <i className="far fa-trash-alt" />
+        </button>
+      </div>
     </div>
   </li>
 );
